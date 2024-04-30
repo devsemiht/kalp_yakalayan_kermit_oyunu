@@ -22,5 +22,5 @@ Oyun, fare tıklamalarını kullanarak oynanır. Oyun ekranındaki kalpleri yaka
 
 ## Oyun Linki
 
-Oyunu oynamak için [buraya tıklayın]([oyun_linki](https://devsemiht.github.io/kalp_yakalayan_kermit_oyunu/)).
+Oyunu oynamak için [buraya tıklayın](https://devsemiht.github.io/kalp_yakalayan_kermit_oyunu).
 

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Kalp Yakalayan Kermit Oyunu</title>
+		<style>
+			/* CSS Kodları */
+			body,
+			html {
+				margin: 0;
+				padding: 0;
+				height: 100%;
+				overflow: hidden;
+				/* Taşma durumunda içeriği gizler */
+			}
+
+
+			#oyun_alani {
+				display: flex;
+				justify-content: center;
+				/* yatayda ortalama */
+				align-items: center;
+				/* dikeyde ortalama */
+				height: calc(100% - 50px);
+				/* oyun alanının yüksekliğini hesaplayıp sayfanın altından 50px yukarı yer ayırır */
+			}
+
+			canvas {
+				background-image: url('arkaplan.jpg');
+				/* oyun arkaplan görseli*/
+				background-size: cover;
+				background-position: center;
+			}
+
+			#puan {
+				position: absolute;
+				right: 20px;
+				/* sağ kenardan 20px içeri konumlandırma */
+				top: 60px;
+				/* üst kenardan 60px aşağıya konumlandırma */
+				font-size: 24px;
+				font-family: Arial, sans-serif;
+			}
+
+			#oyun_aciklamasi {
+				position: absolute;
+				left: 20px;
+				/* sol kenardan 20px içeriye konumlandırma */
+				top: 20px;
+				/* üst kenardan 20px aşağıya konumlandırma */
+				font-size: 24px;
+				font-family: Arial, sans-serif;
+			}
+
+			#zamanlayici {
+				position: absolute;
+				right: 20px;
+				/* sağ kenardan 20px içeriye konumlandırma */
+				top: 20px;
+				/* üst kenardan 20px aşağıya konumlandırma */
+				font-size: 24px;
+				font-family: Arial, sans-serif;
+			}
+
+			#yeniden_baslat_butonu {
+				position: absolute;
+				bottom: 600px;
+				/* alt kenardan 600px yukarıya konumlandırma */
+				left: 50%;
+				/* soldan yarıya konumlandırma */
+				transform: translateX(-50%);
+				/* Yatayda ortalama */
+				padding: 15px 30px;
+				/* butonun iç boşluğu */
+				font-size: 24px;
+				background-color: #6e01ad;
+				color: white;
+				border: none;
+				border-radius: 5px;
+				/* köşeleri yuvarlama */
+				cursor: pointer;
+				/* fareyi el ile değiştirme */
+			}
+		</style>
+
+	</head>
+
+	<body>
+		<div id="oyun_aciklamasi"><b>KALP YAKALAYAN KERMİT OYUNU</b> <br> <!--oyun açıklaması-->
+			İbrahim Semih Temiz <br>
+			21360859054 <br>
+			Oyunun amacı: Kermit karakteri ile 1 dakika içerisinde hızlı düşünme <br> ve reflekslerinizi test
+			edebileceğiniz
+			bir web oyunudur. <br> Dikkat! Eğer kalbi yakalayamazsanız dilin tekrar <br> yakalaması için biraz beklemek
+			zorundasınız. İyi oyunlar...</div>
+		<br>
+		<div id="puan">Yakalanan Kalp: 0</div> <!--yakalanan kaplerin bilgisi-->
+		<div id="zamanlayici">Kalan Süre: 60</div> <!--kalan sürenin bilgisi-->
+		<div id="oyun_alani">
+			<canvas id="oyun_canvas"></canvas>
+		</div>
+		<img id="kermit_resmi" src="kermit.png" style="display:none;"> <!--kermit görseli-->
+		<img id="kalp_resmi" src="heart.png" style="display:none;"> <!--k görseli-->
+		<button id="yeniden_baslat_butonu" style="display:none;">Tekrar Oyna</button>
+		<script>
+			const canvas = document.getElementById('oyun_canvas'); //canvas oluşturma
+			const ctx = canvas.getContext('2d'); //2 boyutlu context tanımlama
+
+			canvas.width = window.innerHeight * 9 / 16; //canvası 16:9 dikey formatında ayarlama
+			canvas.height = window.innerHeight;
+
+			const kermit_resmi = document.getElementById('kermit_resmi'); //kermit görseli
+			const kalp_resmi = document.getElementById('kalp_resmi'); //kalp görseli
+			let kermit = { //kermitin konumu
+				x: canvas.width / 2 - 200,
+				y: canvas.height - 270,
+				genişlik: 450, //kermitin px ölçülerine göre eninin oransal küçültülmesi
+				yükseklik: 340 //kermitin px ölçülerine göre uzunluğunun oransal küçültülmesi
+			};
+
+			// bazı tanımlamalar
+			let kalpler = [];
+			let dil = { dışarıda: false, hedefX: 0, hedefY: 0, genişlik: 5, çekme: false, kalpyakalama: null };
+			let puan = 0;
+			let zamanlayıcı = 60;
+			let oyundevametme = true;
+
+			function kermit_çizme() { //kermit çizme
+				ctx.drawImage(kermit_resmi, kermit.x, kermit.y, kermit.genişlik, kermit.yükseklik);
+			}
+
+			function kalp_çizme() { //kalp çizme
+				kalpler.forEach(kalp => {
+					if (kalp.görünme) {
+						ctx.drawImage(kalp_resmi, kalp.x, kalp.y, kalp.boyut, kalp.boyut);
+					}
+				});
+			}
+
+			function dil_çizme() { //dil çizme
+				if (dil.dışarıda) {
+					ctx.strokeStyle = 'purple';
+					ctx.lineWidth = dil.genişlik;
+					ctx.beginPath();
+					ctx.moveTo(kermit.x + (kermit.genişlik / 2) - 25, kermit.y + (kermit.yükseklik / 2) - 40); //dili kermitin ağzına hizalama
+					ctx.lineTo(dil.hedefX, dil.hedefY);
+					ctx.stroke();
+				}
+			}
+
+			function oyun_güncelleme() { //oyun alanını anlık güncelleme
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				kermit_çizme();
+				kalp_çizme();
+				dil_çizme();
+				dil_güncelleme();
+				kalpleri_güncelleme();
+				if (oyundevametme) {
+					requestAnimationFrame(oyun_güncelleme);
+				} else {
+					ctx.font = '48px Arial';
+					ctx.fillStyle = 'white';
+					ctx.textAlign = 'center';
+					ctx.fillText('Oyun Bitti! Yakalanan: ' + puan, canvas.width / 2, canvas.height / 2); //oyun sonu bilgilendirme yazısı
+					document.getElementById('yeniden_baslat_butonu').style.display = 'block'; //yeniden başlatma butonu
+				}
+			}
+
+			function kalp_ekle() { //yeni kalplerin eklenmesi
+				if (!oyundevametme) return;
+				let kalp = {
+					x: Math.random() * canvas.width,
+					y: Math.random() * canvas.height - 100,
+					boyut: 70,
+					görünme: true
+				};
+				kalpler.push(kalp);
+				setTimeout(() => {
+					if (oyundevametme && kalp.görünme) {
+						kalp.görünme = false;
+					}
+				}, 4000); //kalplerin 4 saniye ekranda kalması
+				setTimeout(kalp_ekle, 2000); //yeni kalbin 2 saniyede bir gelmesi
+			}
+
+			function kalpleri_güncelleme() { //görünen kalplerin anlık güncellenmesi
+				kalpler = kalpler.filter(kalp => kalp.görünme);
+			}
+
+			function dil_güncelleme() { //dilin anlık güncellenmesi yakalama ve yakalamama durumuna göre anlık konumlanması
+				if (dil.dışarıda && !dil.çekme) {
+					if (dil.kalpyakalama) {
+						let dx = (dil.hedefX - dil.kalpyakalama.x - dil.kalpyakalama.boyut / 2) * 0.02; //kalplerin hitbox
+						let dy = (dil.hedefY - dil.kalpyakalama.y - dil.kalpyakalama.boyut / 2) * 0.02; //alanını ayarlama
+						dil.kalpyakalama.x += dx;
+						dil.kalpyakalama.y += dy;
+						if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+							dil.dışarıda = false;
+							dil.çekme = true;
+							dil.kalpyakalama.görünme = false;
+							dil.kalpyakalama = null;
+							puanGüncelle();
+						}
+					} else {
+						dil.çekme = true;
+					}
+				} else if (dil.dışarıda && dil.çekme) {
+					let dx = kermit.x + (kermit.genişlik / 2) - 25 - dil.hedefX;
+					let dy = kermit.y + (kermit.yükseklik / 2) - 40 - dil.hedefY;
+					let mesafe = Math.sqrt(dx * dx + dy * dy);
+					let hız = 3; // yakalayamazsa dilin çekilme hızı
+					if (mesafe > hız) {
+						dil.hedefX += dx / mesafe * hız;
+						dil.hedefY += dy / mesafe * hız;
+					} else { //yakalarsa aniden çekilmesi
+						dil.dışarıda = false;
+						dil.çekme = false;
+						dil.hedefX = kermit.x + (kermit.genişlik / 2) - 25;
+						dil.hedefY = kermit.y + (kermit.yükseklik / 2) - 40;
+					}
+				}
+			}
+
+			function kalp_çarpışması() { //kalplerin üst üste binmemesi için çarpışma kontrolü
+				kalpler = kalpler.filter(kalp => {
+					const mesafe = Math.sqrt((dil.hedefX - (kalp.x + kalp.boyut / 2)) ** 2 + (dil.hedefY - (kalp.y + kalp.boyut / 2)) ** 2);
+					if (mesafe < kalp.boyut / 2) {
+						dil.kalpyakalama = kalp;
+						dil.hedefX = kalp.x + kalp.boyut / 2;
+						dil.hedefY = kalp.y + kalp.boyut / 2;
+						return false;
+					}
+					return true;
+				});
+			}
+
+			function puanGüncelle() { //yakalanan kalbe göre puan güncelleme
+				puan++;
+				document.getElementById('puan').textContent = 'Yakalanan kalp: ' + puan;
+			}
+
+			function zamanlayıcı_güncelleme() { //süreyi anlık güncelleme
+				if (zamanlayıcı > 0) {
+					setTimeout(() => {
+						zamanlayıcı--;
+						document.getElementById('zamanlayici').textContent = 'Kalan Süre: ' + zamanlayıcı;
+						zamanlayıcı_güncelleme();
+					}, 1000);
+				} else {
+					oyundevametme = false;
+				}
+			}
+
+			canvas.addEventListener('click', function (e) { //fare tıklamasına göre dilin hareket etmesi
+				if (!dil.dışarıda && oyundevametme) {
+					const dikdörtgen = canvas.getBoundingClientRect();
+					const x = e.clientX - dikdörtgen.left;
+					const y = e.clientY - dikdörtgen.top;
+					dil.dışarıda = true;
+					dil.çekme = false;
+					dil.genişlik = 5;
+					dil.hedefX = x;
+					dil.hedefY = y;
+					kalp_çarpışması();
+				}
+			});
+
+			document.getElementById('yeniden_baslat_butonu').addEventListener('click', function () { //fare tıklaması ile yeniden başlat butonunun çalışması
+				oyun_sıfırlama();
+			});
+
+			function oyun_sıfırlama() { //oyunu ilk hâline getirme
+				puan = 0;
+				zamanlayıcı = 60;
+				oyundevametme = true;
+				kalpler = [];
+				document.getElementById('puan').textContent = 'Yakalanan: ' + puan;
+				document.getElementById('zamanlayici').textContent = 'Kalan Süre: ' + zamanlayıcı;
+				document.getElementById('yeniden_baslat_butonu').style.display = 'none';
+				kalp_ekle();
+				oyun_güncelleme();
+				zamanlayıcı_güncelleme();
+			}
+
+			kalp_ekle();
+			oyun_güncelleme();
+			zamanlayıcı_güncelleme();
+		</script>
+
+	</body>
+
+</html>
